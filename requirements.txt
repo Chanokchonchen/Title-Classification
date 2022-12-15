@@ -1,0 +1,8 @@
+pythainlp
+deepcut
+marisa-trie
+seaborn
+scikit-learn
+pandas
+numpy
+tqdm
