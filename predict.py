@@ -7,7 +7,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Python Script for Predict Title Category')
     parser.add_argument('-input',type=str,help='Path to Prediction Data in csv format',default=TEST_PATH)
     parser.add_argument('-output',type=str,help='Path to Prediction Result in csv format',default=OUTPUT_PATH)
-    parser.add_argument('-modelname',type=str,help='Choose Model Name',choices=model_names,required=True)  
+    parser.add_argument('-modelname',type=str,help='Choose Model Name',choices=model_names,default=model_names[0])  
     args = parser.parse_args()
     return args
 

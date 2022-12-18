@@ -295,6 +295,7 @@ def get_allmodelname():
       for name in files:
         if name.endswith('.pkl'):
           model_lists.append(name[:-4])
+    model_lists.sort(reverse=True)
     return model_lists
 
 def parse_modelname(modelname):
