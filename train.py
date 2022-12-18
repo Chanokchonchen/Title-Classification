@@ -95,8 +95,9 @@ def train_model(engine,pre_path=False,split_test=False,special_features=False,me
       os.makedirs('./Reports', exist_ok=True)
       os.makedirs('./Models', exist_ok=True)
       os.makedirs('./Vectorizers', exist_ok=True)
-      save_name = get_name(engine,model,vector,method,special_features,min_count,list_dict)
-      print_config(engine,model,vector,method,special_features,min_count,list_dict)
+      date = datetime.now().strftime("%y_%m_%d_%H_%M_%S")
+      save_name = get_name(date,engine,model,vector,method,special_features,min_count,list_dict)
+      print_config(date,engine,model,vector,method,special_features,min_count,list_dict)
       if cross:
         print(f"Cross Validation : {cross}")
       else:
@@ -123,11 +124,13 @@ def train_model(engine,pre_path=False,split_test=False,special_features=False,me
       elif split_test:
         cross_validate(df,save_name,engine,special_features,method,model,vector,min_count,True,list_dict,1)
       else:
-        vectors = process_vector(df['title_th'].values,save_name,min_count,vector)
+        vectors , vectorizer = process_vector(df['title_th'].values,min_count,vector)
         if special_features:
           if method=='substr':
+            print(f"Special Method : Split title & dict")
             vectors = concat_special_features_with_sub_str(df,vectors,engine,list_dict)
           else:
+            print(f"Special Method : Split title only")
             vectors = concat_special_features_with_split_title(df,vectors,list_dict)
         X = vectors.values
         y = df['class'].values
@@ -135,10 +138,12 @@ def train_model(engine,pre_path=False,split_test=False,special_features=False,me
         if model=="svm":
           classifier = SVC(kernel='linear')
         else:
-          classifier = RandomForestClassifier(n_estimators=1000, random_state=5)
+          classifier = RandomForestClassifier(n_estimators=1000, random_state=RANDOM_STATE)
         print(f'Model : {model}')
         classifier.fit(X, y)
+        pickle.dump(vectorizer, open(f"{VECTOR_PATH}{save_name}.pkl", 'wb'))
         pickle.dump(classifier, open(f"{MODEL_PATH}{save_name}.pkl", 'wb'))
+        print(f"Save success Path: {VECTOR_PATH}{save_name}.pkl")
         print(f"Save success Path: {MODEL_PATH}{save_name}.pkl")
 
 args = parse_arguments()
@@ -148,7 +153,7 @@ pre = args.pre
 model = args.model
 vector = args.vectorizer
 special = False
-method = "split"
+method = None
 min_count = args.minterm
 split_test = args.splittest
 cross = args.cross

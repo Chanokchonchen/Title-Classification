@@ -15,6 +15,7 @@ from sklearn.metrics import classification_report , accuracy_score , precision_s
 from sklearn.svm import SVC  
 from sklearn.ensemble import RandomForestClassifier
 from marisa_trie import Trie
+from datetime import datetime
 tqdm.pandas()
 
 DIGIT_SYMBOL = '[:NUM:]'
@@ -127,14 +128,6 @@ def tokenizer(x: str):
     p = re.compile('[\S+]{'+str(MIN_LENGTH)+',}')
     return [i for i in l if p.match(i)]
   
-
-def create_vectors_fit_transform(titles: List[str], vectorizer,savename) -> pd.DataFrame:
-    sparse_matrix = vectorizer.fit_transform(titles)
-    with open(f"{VECTOR_PATH}{savename}.pkl", 'wb') as vec:
-      pickle.dump(vectorizer,vec)
-    print(f"Save success Path: {VECTOR_PATH}{savename}.pkl")
-    return sparse_matrix_to_data_frame(sparse_matrix=sparse_matrix,
-                                       vectorizer=vectorizer)
     
 def sparse_matrix_to_data_frame(sparse_matrix, vectorizer):
     doc_term_matrix = sparse_matrix.toarray()
@@ -262,14 +255,15 @@ def read_preprocess(engine,with_dict=False,min_l=0):
     print(f"Datasets Path {PRE_PATH}{engine}.csv")
     return pd.read_csv(f"{PRE_PATH}{engine}.csv",encoding = 'utf8')
 
-def process_vector(data,savename,min_count=3,vector="tfidf"):
+def process_vector(data,min_count=3,vector="tfidf"):
     if vector=="tfidf":
       vectorizer = TfidfVectorizer(tokenizer=tokenizer,min_df=min_count,token_pattern=None)
       print(f"Vectorizer TFIDF Min Token Length {MIN_LENGTH} Min Count {min_count}")
     else:
       vectorizer = CountVectorizer(tokenizer=tokenizer,min_df=min_count,token_pattern=None)
       print(f"Vectorizer TF Min Token Length {MIN_LENGTH} Min Count {min_count}")
-    return create_vectors_fit_transform(titles=data,vectorizer=vectorizer,savename=savename)
+    sparse_matrix = vectorizer.fit_transform(data)
+    return sparse_matrix_to_data_frame(sparse_matrix=sparse_matrix,vectorizer=vectorizer) , vectorizer
 
 def concat_special_features_with_split_title(df,vectors,list_dict=["wl1","wl2","wl3","wl4"]):
     wl_features = []
@@ -295,19 +289,49 @@ def concat_special_features_with_sub_str(df,vectors,engine,list_dict=["wl1","wl2
 def drop_duplicate(df):
     return df.drop_duplicates(subset=['title_th'])
 
-def print_config(engine,model,vector,method,special,min_count,listdict):
+def get_allmodelname():
+    model_lists = []
+    for root, dirs, files in os.walk(f"{MODEL_PATH}", topdown=False):
+      for name in files:
+        if name.endswith('.pkl'):
+          model_lists.append(name[:-4])
+    return model_lists
+
+def parse_modelname(modelname):
+  date = "_".join(modelname.split('_')[:6])
+  split_name = modelname.split('_')[6:]
+  engine = split_name[0]
+  model = split_name[1]
+  vector = split_name[2]
+  if len(split_name) <= 4:
+    minterm = split_name[3]
+    special_features = False
+    method = "split"
+    list_dict =['wl1', 'wl2', 'wl3' , 'wl4']
+  else:
+    special_features = True
+    method = split_name[3]
+    minterm = split_name[4]
+    dicts = split_name[5]
+    list_dict = [dicts[index.start():index.end()] for index in re.finditer(r"wl\d+",dicts)]
+  return date , engine , special_features , method , model , vector , int(minterm) , list_dict
+
+
+def print_config(date,engine,model,vector,method,special,min_count,listdict):
   print("===========================================")
   print(f"Tokenizer Engine : {engine}")
   print(f"Model : {model}")
   print(f"Vectorizer method : {vector}")
   print(f"Min Count : {min_count}")
+  print(f"Date Time : {datetime.strptime(date, '%y_%m_%d_%H_%M_%S').strftime('%y/%m/%d %H:%M:%S')}")
   if special:
     print(f"Special Feature Method : {method}")
     print(f"List Dicts : {listdict}")
   print("===========================================\n")
 
-def get_name(engine,model,vector,method,special,min_count,listdict):
+def get_name(date,engine,model,vector,method,special,min_count,listdict):
   if special:
     d = ''.join(listdict)
-    return f"{engine}_{model}_{vector}_{method}_{min_count}_{d}"
-  return f"{engine}_{model}_{vector}_{min_count}"
+    return f"{date}_{engine}_{model}_{vector}_{method}_{min_count}_{d}"
+  return f"{date}_{engine}_{model}_{vector}_{min_count}"
+
